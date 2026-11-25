@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-ps51:
+    name: Windows PowerShell 5.1
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load Pester 3.4.0 (the version Windows ships with)
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -eq '3.4.0')) {
+            Install-Module Pester -RequiredVersion 3.4.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+          Import-Module Pester -RequiredVersion 3.4.0 -Force
+          "Pester $((Get-Module Pester).Version) on PowerShell $($PSVersionTable.PSVersion)"
+
+      - name: Unit tests
+        run: |
+          Import-Module Pester -RequiredVersion 3.4.0 -Force
+          $r = Invoke-Pester -Script .\Collect-Diagnostics.Tests.ps1 -PassThru
+          "Passed: $($r.PassedCount) Failed: $($r.FailedCount)"
+          if ($r.FailedCount -gt 0 -or $r.PassedCount -eq 0) { exit 1 }
+
+      - name: Live run with -Redact + leak scan
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = Join-Path $env:RUNNER_TEMP 'diag'
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+          powershell -ExecutionPolicy Bypass -File .\Collect-Diagnostics.ps1 -Redact -OutputDirectory $out
+          if ($LASTEXITCODE -ne 0) { throw "Collector exited $LASTEXITCODE" }
+          $zip = Get-ChildItem $out, . -Filter 'Diag_*.zip' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $zip) { throw 'No archive produced' }
+          $x = Join-Path $env:RUNNER_TEMP 'extract'
+          Expand-Archive $zip.FullName -DestinationPath $x -Force
+          $files = Get-ChildItem $x -Recurse -File
+          "Files in archive: $($files.Count)"
+          if ($files.Count -lt 9) { throw "Expected 9 files, got $($files.Count)" }
+          $needles = @($env:USERNAME, $env:COMPUTERNAME) +
+            (Get-ChildItem C:\Users -Directory | Where-Object Name -notin 'Public','Default','All Users','Default User' | Select-Object -ExpandProperty Name)
+          $needles = $needles | Where-Object { $_ -and $_.Length -ge 3 } | Sort-Object -Unique
+          $leaks = foreach ($n in $needles) { $files | Select-String -SimpleMatch -Pattern $n -List }
+          if ($leaks) { $leaks | ForEach-Object { "LEAK: $($_.Filename)" }; throw "$(@($leaks).Count) leak(s) found" }
+          "LeakCount: 0 across $($needles.Count) names"

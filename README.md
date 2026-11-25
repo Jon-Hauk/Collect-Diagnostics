@@ -1,5 +1,7 @@
 # Collect-Diagnostics.ps1
 
+[![ci](https://github.com/Jon-Hauk/Collect-Diagnostics/actions/workflows/ci.yml/badge.svg)](https://github.com/Jon-Hauk/Collect-Diagnostics/actions/workflows/ci.yml)
+
 A single-file, strictly read-only Windows diagnostic collector designed for async troubleshooting on Windows 10 and Windows 11. Runs on built-in Windows PowerShell 5.1 with zero external modules or installations.
 
 ## Verification Status
