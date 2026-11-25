@@ -6,7 +6,7 @@ A single-file, strictly read-only Windows diagnostic collector designed for asyn
 
 | Check | Status |
 | --- | --- |
-| Pester suite (PowerShell 5.1, Pester 3.4.0) | 20/20 passing |
+| Pester suite (PowerShell 5.1, Pester 3.4.0) | 21/21 passing |
 | Live run, standard user, Windows 11 | Clean (no errors) |
 | `-Redact` leak scan across all output files | 0 leaks (all local profile names, username, hostname) |
 | Mark-of-the-Web download + `-ExecutionPolicy Bypass` | Verified |
@@ -89,8 +89,10 @@ Send that `.zip` file back for diagnosis.
 ## Running Tests (Pester)
 
 ```powershell
-Invoke-Pester -Script .\Collect-Diagnostics.Tests.ps1 -EnableExit
+Invoke-Pester -Script .\Collect-Diagnostics.Tests.ps1
 ```
+
+In CI, add `-EnableExit` so the exit code reflects failures. Don't use it interactively, because it closes the PowerShell window.
 
 ## Sample `summary.md`
 

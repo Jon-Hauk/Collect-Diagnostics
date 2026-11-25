@@ -637,7 +637,7 @@ function Protect-RedactedText {
         $sortedKeys = $Context.LiteralMap.Keys | Sort-Object -Property Length -Descending
         foreach ($key in $sortedKeys) {
             $token = $Context.LiteralMap[$key]
-            $escaped = [regex]::Escape($key)
+            $escaped = '(?<![A-Za-z0-9])' + [regex]::Escape($key) + '(?![A-Za-z0-9])'
             $result = [regex]::Replace($result, $escaped, $token, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         }
     }
@@ -703,7 +703,7 @@ function Protect-RedactedText {
         foreach ($key in $allKeys) {
             if ($key.Length -lt 2) { continue }
             $token = $Context.LiteralMap[$key]
-            $escaped = [regex]::Escape($key)
+            $escaped = '(?<![A-Za-z0-9])' + [regex]::Escape($key) + '(?![A-Za-z0-9])'
             $result = [regex]::Replace($result, $escaped, $token, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         }
     }

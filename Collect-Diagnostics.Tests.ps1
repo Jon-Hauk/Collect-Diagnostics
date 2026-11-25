@@ -185,6 +185,20 @@ Describe 'Collect-Diagnostics - Redaction' {
         $redacted | Should Not Match '(?i)svc_account'
         $redacted | Should Match 'DOMAIN_1\\USER_2'
     }
+
+    It 'only replaces known names at word boundaries, never inside other words' {
+        $ctx = New-RedactionContext -UserName 'jon' -ComputerName 'PC-1' -Domain 'PC-1' -DnsDomain ''
+        $sample = 'Lib: jongo.dll | Net: banjonet | Path: C:\Users\jon\file.txt | Owner: jon | Backup: jon_backup | Tool: jonathanTool'
+
+        $redacted = Protect-RedactedText -Text $sample -Context $ctx
+
+        $redacted | Should Match 'jongo\.dll'
+        $redacted | Should Match 'banjonet'
+        $redacted | Should Match 'jonathanTool'
+        $redacted | Should Match 'Owner: USER_1'
+        $redacted | Should Match 'USER_1_backup'
+        $redacted | Should Not Match '\\jon\\'
+    }
 }
 
 Describe 'Collect-Diagnostics - Flag Thresholds' {
